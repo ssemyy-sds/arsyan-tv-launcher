@@ -1,19 +1,49 @@
 package io.freemytv;
 
 import android.accessibilityservice.AccessibilityService;
+import android.content.Intent;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 
-/**
- * Sees the remote's keys before any app does, so the app buttons work from inside Netflix, Disney and the rest. The
- * system waits for it on every key (up to half a second), so it runs in a process of its own and does next to nothing.
- */
 public class RemoteKeyService extends AccessibilityService {
-    @Override protected boolean onKeyEvent(KeyEvent event) {
+    private static final String TAG = "RemoteKeyService";
+    private static final String STOCK_LAUNCHER = "com.google.android.tvlauncher";
+
+    @Override
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+        if (event == null) return;
+        CharSequence pkg = event.getPackageName();
+        if (pkg != null) {
+            String p = pkg.toString();
+            if (STOCK_LAUNCHER.equals(p) || "com.ebsproject.drawer".equals(p) || p.contains("tvlauncher")) {
+                Log.i(TAG, "Launcher detected (" + p + "), redirecting to HomeActivity");
+                launchHome();
+            }
+        }
+    }
+
+    private void launchHome() {
+        Intent intent = new Intent(this, HomeActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        try {
+            startActivity(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to launch HomeActivity: " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected boolean onKeyEvent(KeyEvent event) {
+        if (event != null && event.getKeyCode() == KeyEvent.KEYCODE_HOME) {
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                launchHome();
+            }
+            return true;
+        }
         return RemoteKeys.onKey(this, event);
     }
 
-    @Override public void onAccessibilityEvent(AccessibilityEvent event) {}
-
-    @Override public void onInterrupt() {}
+    @Override
+    public void onInterrupt() {}
 }

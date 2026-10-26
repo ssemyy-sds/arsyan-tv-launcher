@@ -303,13 +303,14 @@ public class SettingsActivity extends Activity {
                     : Prefs.wallpaper().equals("photos") ? new int[] {WALLPAPER_ROW, MOTION_ROW}
                     : new int[] {WALLPAPER_ROW, MOTION_ROW, SKY_WEATHER_ROW, SKY_TIME_ROW, 2, TEXT_ROW, GLASS_ROW};
             int coins = settingLabels().length - COIN_ROWS;
-            int[] r = new int[5 + coins];
+            int[] r = new int[6 + coins];
             r[0] = 4;
             r[1] = CITY_ROW;
-            r[2] = QUOTES_ROW;
-            for (int i = 0; i < coins; i++) r[3 + i] = COIN_ROWS + i;
-            r[3 + coins] = CAMERA_ROW;
-            r[4 + coins] = CAMERA_URL_ROW;
+            r[2] = ADZAN_SOUND_ROW;
+            r[3] = QUOTES_ROW;
+            for (int i = 0; i < coins; i++) r[4 + i] = COIN_ROWS + i;
+            r[4 + coins] = CAMERA_ROW;
+            r[5 + coins] = CAMERA_URL_ROW;
             return r;
         }
 
@@ -318,13 +319,14 @@ public class SettingsActivity extends Activity {
             if (section == S_WALLPAPER && local == 2) return Ui.tr("PRÉVIA DO CÉU", "SKY PREVIEW");
             if (section == S_WALLPAPER && local == 4) return Ui.tr("APARÊNCIA", "APPEARANCE");
             if (section == S_WIDGETS && local == 0) return Ui.tr("CLIMA", "WEATHER");
-            if (section == S_WIDGETS && local == 2) return HomeData.RATES ? Ui.tr("CÂMBIO", "EXCHANGE RATES") : Ui.tr("COTAÇÕES", "QUOTES");
-            if (section == S_WIDGETS && local == 3 + settingLabels().length - COIN_ROWS) return Ui.tr("CÂMERA", "CCTV");
+            if (section == S_WIDGETS && local == 2) return Ui.indo ? "JADWAL SHOLAT & ADZAN" : Ui.tr("HORÁRIOS DE ORAÇÃO", "PRAYER & ADZAN");
+            if (section == S_WIDGETS && local == 3) return HomeData.RATES ? Ui.tr("CÂMBIO", "EXCHANGE RATES") : Ui.tr("COTAÇÕES", "QUOTES");
+            if (section == S_WIDGETS && local == 4 + settingLabels().length - COIN_ROWS) return Ui.tr("CÂMERA", "CCTV");
             return null;
         }
 
         private static boolean isSwitch(int row) {
-            return row == 3 || row == 4 || row == MOTION_ROW || row == QUOTES_ROW || row == CAMERA_ROW || row >= COIN_ROWS;
+            return row == 3 || row == 4 || row == MOTION_ROW || row == QUOTES_ROW || row == CAMERA_ROW || row == ADZAN_SOUND_ROW || row >= COIN_ROWS;
         }
 
         private static boolean isOn(int row) {
@@ -334,6 +336,7 @@ public class SettingsActivity extends Activity {
                 case MOTION_ROW: return Prefs.wallpaperMotion();
                 case QUOTES_ROW: return Prefs.quotes();
                 case CAMERA_ROW: return Prefs.camera();
+                case ADZAN_SOUND_ROW: return Prefs.adzanSound();
                 default: return Prefs.quotes() && Prefs.coin(row - COIN_ROWS);
             }
         }
@@ -1243,7 +1246,7 @@ public class SettingsActivity extends Activity {
          * weather, wallpaper, its motion, the sky preview (weather, time of day), city, quotes, then one row per coin.
          */
         private static final int WALLPAPER_ROW = 5, MOTION_ROW = 6, SKY_WEATHER_ROW = 7, SKY_TIME_ROW = 8,
-                CITY_ROW = 9, QUOTES_ROW = 10, TEXT_ROW = 11, NAME_ROW = 12, CAMERA_ROW = 13, CAMERA_URL_ROW = 14, GLASS_ROW = 15, COIN_ROWS = 16;
+                CITY_ROW = 9, QUOTES_ROW = 10, TEXT_ROW = 11, NAME_ROW = 12, CAMERA_ROW = 13, CAMERA_URL_ROW = 14, GLASS_ROW = 15, ADZAN_SOUND_ROW = 16, COIN_ROWS = 17;
 
         /** Rows whose value is typed (OK opens the keyboard): the city, the name, the camera's address. */
         private static boolean isTyped(int row) {
@@ -1273,6 +1276,7 @@ public class SettingsActivity extends Activity {
             l.add(Ui.tr("Câmera de segurança", "CCTV camera"));
             l.add(Ui.tr("Endereço da câmera", "Camera address"));
             l.add(Ui.tr("Vidro", "Glass"));
+            l.add(Ui.indo ? "Suara adzan" : Ui.tr("Som do Adhan", "Adzan sound"));
             if (HomeData.RATES) {
                 for (int i = 0; i < HomeData.RATE_CODES.length; i++) l.add(HomeData.coinName(i));
             } else {
@@ -1310,6 +1314,7 @@ public class SettingsActivity extends Activity {
             String size = Prefs.textSize();
             String glass = Prefs.glass();
             v[GLASS_ROW] = glass.equals("clear") ? Ui.tr("Transparente", "Transparent") : Ui.tr("Fosco", "Frosted");
+            v[ADZAN_SOUND_ROW] = onOff(Prefs.adzanSound());
             v[TEXT_ROW] = size.equals("small") ? Ui.tr("Pequeno", "Small") : size.equals("large") ? Ui.tr("Grande", "Large") : Ui.tr("Médio", "Medium");
             v[NAME_ROW] = Prefs.greetingName().isEmpty() ? Ui.tr("Nenhum", "None") : Prefs.greetingName();
             v[CAMERA_ROW] = onOff(Prefs.camera());
@@ -1415,6 +1420,7 @@ public class SettingsActivity extends Activity {
                     if (Prefs.cameraUrl().isEmpty()) askCameraUrl();   // nothing to show yet: ask for the address first
                     else Prefs.setCamera(!Prefs.camera());
                     break;
+                case ADZAN_SOUND_ROW: Prefs.setAdzanSound(!Prefs.adzanSound()); break;
                 case QUOTES_ROW: Prefs.setQuotes(!Prefs.quotes()); break;
                 case GLASS_ROW: {
                     int at = java.util.Arrays.asList(GLASSES).indexOf(Prefs.glass());

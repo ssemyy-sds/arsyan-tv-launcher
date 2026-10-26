@@ -420,7 +420,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 case TILES: drawTiles(c); break;
                 case DRAWER: drawDrawer(c); break;
                 case SHEET: drawSheet(c); break;
-                default: drawToast(c); break;
+                default: drawToast(c); drawAdzanAlert(c); break;
             }
             scene.setOffset(0, 0);
         }
@@ -506,6 +506,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         setShelf(HomeApps.shelf(a, false));
         setStatusItems(statusList(a));
         setDrawerItems(drawerList(a));
+        AdzanAlert.setListener(() -> {
+            if (toastLayer != null) toastLayer.postInvalidate();
+            wake();
+        });
     }
 
     // MARK: - Lifecycle (called by HomeActivity)
@@ -712,7 +716,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         measure(tiles, width, Math.round(270 * kk));
         measure(drawerLayer, width, Math.round(600 * kk));
         measure(sheetLayer, width, height);
-        measure(toastLayer, Math.round(1000 * kk), Math.round(220 * kk));
+        measure(toastLayer, width, height);
         setMeasuredDimension(width, height);
     }
 
@@ -732,7 +736,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         sheetLayer.layout(0, 0, width, height);
         sheetLayer.setPivotX(width / 2f);
         sheetLayer.setPivotY(height / 2f);
-        place(toastLayer, (width - toastLayer.getMeasuredWidth()) / 2, 0);
+        place(toastLayer, 0, 0);
     }
 
     private static void place(View v, int x, int y) {
@@ -1930,8 +1934,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void drawPrayerCard(Canvas c, RectF r) {
         drawerCard(c, r);
         if (!refreshPrayers()) return;
-        if (Ui.LEGACY) prayerSnapshot.draw(c, r, drawerCardsKey() + "|" + prayerMinute, cc -> drawPrayers(cc, r));
-        else drawPrayers(c, r);
+        drawPrayers(c, r);
+        if (!sheetOpen && zone == WIDGETS && widgetIndex == 2) {
+            rim.setColor(0xFFFFFFFF);
+            rim.setStrokeWidth(3 * k);
+            c.drawRoundRect(r, 28 * k, 28 * k, rim);
+            rim.setStrokeWidth(2.5f * k);
+        }
     }
 
     private final Snapshot prayerSnapshot = new Snapshot();
@@ -1942,11 +1951,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         c.drawText(prayerCountdown, right, r.top + 54 * k, cardDimRight);
         float cap = Ui.cap(pricePaint);
         for (int i = 0; i < 5; i++) {
-            float base = r.top + (106 + 40 * i) * k, mid = base - cap / 2;
+            float base = r.top + (102 + 35 * i) * k, mid = base - cap / 2;
             boolean next = i == prayerNext;
             if (next) {
-                tmp.set(x - 14 * k, mid - 19 * k, right + 14 * k, mid + 19 * k);
-                glassChip(c, tmp, 19 * k);
+                tmp.set(x - 14 * k, mid - 18 * k, right + 14 * k, mid + 18 * k);
+                glassChip(c, tmp, 18 * k);
             }
             int ink = drawerInk(next ? 1 : 0.92f);
             hourTemp.setTextAlign(Paint.Align.LEFT);
@@ -1958,6 +1967,15 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         hourTemp.setColor(drawerInk(0.95f));
         pricePaint.setColor(drawerInk(0.95f));
+
+        boolean soundOn = Prefs.adzanSound();
+        String soundBadge = soundOn ? "Suara Adzan: Aktif (Tekan OK utk ubah)" : "Suara Adzan: Senyap (Tekan OK utk ubah)";
+        int badgeColor = soundOn ? drawerInk(0.85f) : 0xFFFF6E6E;
+        Paint pBadge = Ui.text(Ui.medium, 16 * k, badgeColor);
+        pBadge.setTextAlign(Paint.Align.LEFT);
+        float badgeY = r.top + 282 * k;
+        Symbols.draw(getContext(), c, "speaker", x + 10 * k, badgeY - Ui.halfCap(pBadge), 18 * k, badgeColor);
+        c.drawText(soundBadge, x + 26 * k, badgeY, pBadge);
     }
 
     /** A small chip of clear glass (the next prayer, a rate's change): a light fill, a bright rim, light on its top. */
@@ -2338,6 +2356,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** Advances the toast queue; returns true while a toast fades in or out (animation). */
     private boolean tickToast(long up) {
+        if (AdzanAlert.isAlertActive()) {
+            if (toastLayer != null) toastLayer.invalidate();
+            return true;
+        }
         if (toast != null && up - toastAt > TOAST_MS) {
             toast = null;
             toastLayer.invalidate();
@@ -2371,6 +2393,54 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         c.translate(tmp.left + padX + iconW + 16 * k, tmp.top + padY);
         toast.draw(c);
         c.restoreToCount(save);
+    }
+
+    private void drawAdzanAlert(Canvas c) {
+        if (!AdzanAlert.isAlertActive()) return;
+        String name = AdzanAlert.getActivePrayerName();
+        if (name == null || name.trim().isEmpty()) name = "Sholat";
+        String city = Prefs.city().isEmpty() ? Config.CITY : Prefs.city();
+        if (city.isEmpty()) city = "Batam";
+
+        float cardW = Math.round(960 * k);
+        float cardH = Math.round(350 * k);
+        float left = (w - cardW) / 2f;
+        float top = (h - cardH) / 2f;
+        tmp.set(left, top, left + cardW, top + cardH);
+
+        int save = c.save();
+        shadow.setColor(0xCC000000);
+        shadows.draw(c, tmp, 36 * k, 50 * k, shadow);
+        scene.glass(c, tmp, 36 * k, SMOKE, 0.90f, 0, 0, 0.08f, 1);
+        border.setColor(0x30FFFFFF);
+        c.drawRoundRect(tmp, 36 * k, 36 * k, border);
+
+        Symbols.draw(getContext(), c, "bedtime", tmp.centerX(), tmp.top + 70 * k, 54 * k, 0xFFFFFFFF);
+
+        Paint pTitle = Ui.text(Ui.displaySemibold, 38 * k, 0xFFFFFFFF);
+        pTitle.setTextAlign(Paint.Align.CENTER);
+        c.drawText("WAKTU ADZAN " + name.toUpperCase(java.util.Locale.ROOT) + " TELAH TIBA", tmp.centerX(), tmp.top + 145 * k, pTitle);
+
+        Paint pSub = Ui.text(Ui.medium, 23 * k, 0xD8FFFFFF);
+        pSub.setTextAlign(Paint.Align.CENTER);
+        c.drawText("Wilayah " + city + " dan sekitarnya", tmp.centerX(), tmp.top + 192 * k, pSub);
+
+        fill.setShader(null);
+        fill.setColor(0x24FFFFFF);
+        c.drawRect(tmp.centerX() - 260 * k, tmp.top + 228 * k, tmp.centerX() + 260 * k, tmp.top + 229 * k, fill);
+
+        Paint pHint = Ui.text(Ui.medium, 19 * k, 0xA8FFFFFF);
+        pHint.setTextAlign(Paint.Align.CENTER);
+        boolean playing = AdzanAlert.isAudioPlaying();
+        String hint = playing
+                ? "🔊  Adzan sedang berkumandang  ·  Tekan remote untuk senyapkan"
+                : (Prefs.adzanSound()
+                        ? "Tekan sembarang tombol remote untuk menutup"
+                        : "🔇  Mode Senyap (Suara Adzan Nonaktif)  ·  Tekan remote untuk menutup");
+        c.drawText(hint, tmp.centerX(), tmp.top + 275 * k, pHint);
+
+        c.restoreToCount(save);
+        if (toastLayer != null) toastLayer.postInvalidateOnAnimation();
     }
 
     private StaticLayout layout(String text) {
@@ -2572,10 +2642,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                     drawerIndex = next;
                 } else if (dy < 0) {
                     closeDrawer();
-                } else if (talkBack() && !widgets().isEmpty()) {
-                    // Only with TalkBack: the widgets are there to be read, and this is how it gets to them.
+                } else if (dy > 0 && !widgets().isEmpty()) {
                     zone = WIDGETS;
-                    widgetIndex = widgets().get(0);
+                    widgetIndex = widgets().contains(2) ? 2 : widgets().get(0);
                 } else {
                     return;
                 }
@@ -2626,7 +2695,16 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         HomeApps.Item it;
         RectF r;
-        if (!sheetOpen && zone == WIDGETS) return;   // a widget is only read
+        if (!sheetOpen && zone == WIDGETS) {
+            if (widgetIndex == 2) {
+                Prefs.setAdzanSound(!Prefs.adzanSound());
+                showToast(Prefs.adzanSound() ? "Suara Adzan Diaktifkan" : "Suara Adzan Dinonaktifkan (Senyap)");
+                click.open();
+                if (drawerLayer != null) drawerLayer.invalidate();
+                if (heroLayer != null) heroLayer.invalidate();
+            }
+            return;
+        }
         if (sheetOpen) {
             if (others.isEmpty()) return;
             it = others.get(gridIndex);
@@ -3017,11 +3095,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
     }
 
-    /** The drawer's widgets that are on (0 weather, 1 quotes), with the drawer open. */
+    /** The drawer's widgets that are on (0 weather, 1 quotes, 2 prayers), with the drawer open. */
     private List<Integer> widgets() {
         List<Integer> out = new ArrayList<>();
         if (!drawerOpen) return out;
         if (Prefs.weather()) out.add(0);
+        if (Config.PRAYER_TIMES) out.add(2);
         if (Prefs.quotes() && HomeData.active().length > 0) out.add(1);
         return out;
     }
@@ -3270,7 +3349,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (!picksOn()) {
             // Top left, level with the corner buttons, at the text size from Settings → Appearance (it scales from
             // that corner): the sky stays open above the shelf.
-            drawClockCards(c);
+            drawClock(c);
             return;   // the rates are drawn with the shelf (drawPlatter): this layer ends above it
         }
         drawForYou(c);
@@ -3681,6 +3760,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         long[] next = PrayerTimes.next(lat, lon, now);
         prayerNext = prayerNextIndex = (int) next[0];
         prayerNextAt = next[1];
+        AdzanAlert.scheduleNext(getContext());
+        for (int i = 0; i < 5; i++) {
+            if (Math.abs(now - prayerToday[i]) < 45_000L) {
+                AdzanAlert.triggerAdzan(getContext(), PrayerTimes.name(i));
+                break;
+            }
+        }
         // Tomorrow's Subuh (after Isya): no row of today's list is "next".
         if (prayerNextAt != prayerToday[prayerNext]) prayerNext = -1;
         for (int i = 0; i < 5; i++) prayerTimeText[i] = clock24(prayerToday[i]);
@@ -3689,6 +3775,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         String in = left >= 60 ? (left / 60) + h + (left % 60) + m : left + m;
         prayerCountdown = Ui.tr("em ", "in ") + in;
         prayerLine = PrayerTimes.name((int) next[0]) + " " + clock24(prayerNextAt) + "  ·  " + prayerCountdown;
+        if (!Prefs.adzanSound()) prayerLine += "  (senyap)";
         return true;
     }
 

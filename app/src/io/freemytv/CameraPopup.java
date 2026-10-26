@@ -73,11 +73,7 @@ final class CameraPopup implements TextureView.SurfaceTextureListener {
         bg.setCornerRadius(radius);
         bg.setStroke(Math.max(1, Math.round(2 * k)), 0x33FFFFFF);
         frame.setBackground(bg);
-        frame.setOutlineProvider(new ViewOutlineProvider() {
-            @Override public void getOutline(View v, Outline o) {
-                o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), radius);
-            }
-        });
+        frame.setOutlineProvider(new PopupOutline(radius));
         frame.setClipToOutline(true);
         frame.setElevation(24 * k);
         video = new TextureView(a);
@@ -275,6 +271,14 @@ final class CameraPopup implements TextureView.SurfaceTextureListener {
         t.setTextSize(TypedValue.COMPLEX_UNIT_PX, px);
         if (Ui.medium != null) t.setTypeface(Ui.medium);
         return t;
+    }
+
+    private static final class PopupOutline extends ViewOutlineProvider {
+        private final int radius;
+        PopupOutline(int radius) { this.radius = radius; }
+        @Override public void getOutline(View v, Outline o) {
+            o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), radius);
+        }
     }
 
     /** The red LIVE mark, like on the tile. */

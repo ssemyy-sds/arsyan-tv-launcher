@@ -48,6 +48,7 @@ public class HomeActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        AdzanAlert.scheduleNext(this);
         if (prefsVersion != Prefs.version) {
             prefsVersion = Prefs.version;
             HomeData.get(this).settingsChanged();
@@ -80,6 +81,13 @@ public class HomeActivity extends Activity {
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if (AdzanAlert.isAlertActive()) {
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                AdzanAlert.stopAudio();
+                if (home != null) home.invalidate();
+                return true;
+            }
+        }
         if (RemoteKeys.onKey(this, event)) return true;
         if (home != null && home.onKey(event)) return true;
         return super.dispatchKeyEvent(event);

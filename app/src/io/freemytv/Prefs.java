@@ -152,6 +152,9 @@ final class Prefs {
     static boolean weather() { return sp().getBoolean("weather", true); }
     static void setWeather(boolean on) { put("weather", on); }
 
+    static boolean adzanSound() { return sp().getBoolean("adzan_sound", true); }
+    static void setAdzanSound(boolean on) { put("adzan_sound", on); }
+
     /**
      * The home screen's background: "ink" (ink mountains, following the time of day and the weather) or "photos" (the
      * picks' photos, as before). The default comes from config.properties (weather_wallpaper).
