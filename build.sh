@@ -22,7 +22,7 @@ command -v "$JAVAC" >/dev/null 2>&1 || { echo "JDK not found. Install JDK 17 and
 
 # --- Settings: config.properties (or CONFIG=release.properties for the download build) -> Config.java
 CONFIG="${CONFIG:-config.properties}"
-APK="${APK:-FreeMyTV.apk}"
+APK="${APK:-ArsyanTV.apk}"
 if [ ! -f "$CONFIG" ]; then
   [ "$CONFIG" = config.properties ] || { echo "$CONFIG not found."; exit 1; }
   cp config.example.properties config.properties
@@ -128,9 +128,8 @@ EOF
     "${JAVA_HOME:+$JAVA_HOME/bin/}java" out/FixAssets.java out/base.apk
     ;;
 esac
-# On Windows javac separates paths with ";", and d8 and apksigner are .bat files.
-CPSEP=:; BAT=; case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) CPSEP=";"; BAT=.bat ;; esac
-"$JAVAC" -nowarn -Xlint:-options -source 8 -target 8 -bootclasspath "$AJ$CPSEP$BT/core-lambda-stubs.jar" -classpath "$AJ" \
+BAT=; case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) BAT=.bat ;; esac
+"$JAVAC" -nowarn -Xlint:-options --release 8 -classpath "$AJ" \
   -encoding UTF-8 -d out/classes $(find app/src out/gen -name '*.java')
 "$BT/d8$BAT" --release --min-api 28 --lib "$AJ" --output out $(find out/classes -name '*.class')
 if command -v zip >/dev/null; then (cd out && zip -qj base.apk classes.dex)

@@ -9,6 +9,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetFileDescriptor;
 import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.util.Log;
@@ -17,6 +19,8 @@ public final class AdzanAlert {
     private static final String TAG = "AdzanAlert";
     private static final String CHANNEL_ID = "adzan_notification_channel";
     private static MediaPlayer player;
+    private static AudioManager audioManager;
+    private static AudioFocusRequest audioFocusRequest;
     private static String activePrayerName = "";
     private static long alertStartTime = 0;
     private static long lastTriggeredMinute = -1;
@@ -86,6 +90,9 @@ public final class AdzanAlert {
         alertStartTime = System.currentTimeMillis();
         Log.i(TAG, "triggerAdzan: " + activePrayerName + " (force=" + force + ")");
 
+        String city = Prefs.city().isEmpty() ? Config.CITY : Prefs.city();
+        if (city.isEmpty()) city = "Batam";
+
         // 1. Android TV Heads-up Notification
         try {
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -97,6 +104,8 @@ public final class AdzanAlert {
                         NotificationManager.IMPORTANCE_HIGH
                     );
                     chan.setDescription("Pemberitahuan waktu adzan tiba untuk Kota Batam");
+                    chan.setBypassDnd(true);
+                    chan.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
                     nm.createNotificationChannel(chan);
                 }
 
@@ -109,17 +118,17 @@ public final class AdzanAlert {
                         ? new Notification.Builder(context, CHANNEL_ID)
                         : new Notification.Builder(context);
 
-                String city = Prefs.city().isEmpty() ? Config.CITY : Prefs.city();
-                if (city.isEmpty()) city = "Batam";
-
                 b.setSmallIcon(R.drawable.icon)
                  .setContentTitle("Waktu Adzan " + activePrayerName + " Telah Tiba")
                  .setContentText("Wilayah " + city + " dan sekitarnya")
                  .setContentIntent(pi)
-                 .setAutoCancel(true);
+                 .setAutoCancel(true)
+                 .setCategory(Notification.CATEGORY_ALARM)
+                 .setPriority(Notification.PRIORITY_MAX);
 
-                if (Build.VERSION.SDK_INT < 26) {
-                    b.setPriority(Notification.PRIORITY_MAX);
+                if (Build.VERSION.SDK_INT >= 21) {
+                    b.setVisibility(Notification.VISIBILITY_PUBLIC);
+                    b.setFullScreenIntent(pi, true);
                 }
 
                 nm.notify(777, b.build());
@@ -128,10 +137,13 @@ public final class AdzanAlert {
             Log.e(TAG, "Notification failed", e);
         }
 
-        // 2. Play Adzan Audio
+        // 2. Show Overlay Banner over other apps (e.g. YouTube)
+        AdzanOverlay.show(context, activePrayerName, city);
+
+        // 3. Play Adzan Audio (with Audio Focus to pause background apps like YouTube)
         playAudio(context);
 
-        // 3. Notify UI listener
+        // 4. Notify UI listener
         if (listener != null) {
             try {
                 listener.onAdzanStateChanged();
@@ -140,7 +152,7 @@ public final class AdzanAlert {
             }
         }
 
-        // 4. Schedule next prayer
+        // 5. Schedule next prayer
         scheduleNext(context);
     }
 
@@ -152,6 +164,68 @@ public final class AdzanAlert {
         }
     }
 
+    private static synchronized void requestAudioFocus(Context context) {
+        try {
+            if (audioManager == null) {
+                audioManager = (AudioManager) context.getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
+            }
+            if (audioManager == null) return;
+
+            if (Build.VERSION.SDK_INT >= 26) {
+                AudioAttributes playbackAttrs = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build();
+                audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                    .setAudioAttributes(playbackAttrs)
+                    .setAcceptsDelayedFocusGain(false)
+                    .setOnAudioFocusChangeListener(new AudioManager.OnAudioFocusChangeListener() {
+                        @Override
+                        public void onAudioFocusChange(int focusChange) {
+                            if (focusChange == AudioManager.AUDIOFOCUS_LOSS) {
+                                stopAudio();
+                            }
+                        }
+                    })
+                    .build();
+                int res = audioManager.requestAudioFocus(audioFocusRequest);
+                Log.i(TAG, "Audio focus requested (API 26+): " + res);
+            } else {
+                int res = audioManager.requestAudioFocus(
+                    new AudioManager.OnAudioFocusChangeListener() {
+                        @Override
+                        public void onAudioFocusChange(int focusChange) {
+                            if (focusChange == AudioManager.AUDIOFOCUS_LOSS) {
+                                stopAudio();
+                            }
+                        }
+                    },
+                    AudioManager.STREAM_ALARM,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                );
+                Log.i(TAG, "Audio focus requested (legacy): " + res);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "requestAudioFocus failed", e);
+        }
+    }
+
+    private static synchronized void abandonAudioFocus() {
+        try {
+            if (audioManager == null) return;
+            if (Build.VERSION.SDK_INT >= 26 && audioFocusRequest != null) {
+                audioManager.abandonAudioFocusRequest(audioFocusRequest);
+                audioFocusRequest = null;
+                Log.i(TAG, "Audio focus abandoned (API 26+)");
+            } else {
+                audioManager.abandonAudioFocus(null);
+                Log.i(TAG, "Audio focus abandoned (legacy)");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "abandonAudioFocus failed", e);
+        }
+    }
+
     private static void releasePlayer() {
         if (player != null) {
             try {
@@ -160,6 +234,8 @@ public final class AdzanAlert {
             } catch (Exception ignored) {}
             player = null;
         }
+        abandonAudioFocus();
+        AdzanOverlay.dismiss();
     }
 
     public static synchronized void playAudio(Context context) {
@@ -169,6 +245,8 @@ public final class AdzanAlert {
         }
         try {
             releasePlayer();
+            requestAudioFocus(context);
+
             player = new MediaPlayer();
             player.setAudioAttributes(new AudioAttributes.Builder()
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -177,17 +255,24 @@ public final class AdzanAlert {
             AssetFileDescriptor afd = context.getAssets().openFd("adzan.ogg");
             player.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
             afd.close();
-            player.setOnCompletionListener(mp -> releasePlayer());
+            player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                @Override
+                public void onCompletion(MediaPlayer mp) {
+                    releasePlayer();
+                }
+            });
             player.prepare();
             player.start();
             Log.i(TAG, "playAudio started successfully");
         } catch (Exception e) {
             Log.e(TAG, "playAudio failed", e);
+            abandonAudioFocus();
         }
     }
 
     public static synchronized void stopAudio() {
         releasePlayer();
+        AdzanOverlay.dismiss();
         activePrayerName = "";
         alertStartTime = 0;
         if (listener != null) {

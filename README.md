@@ -33,9 +33,14 @@ Easily toggle Adzan sound on or off directly through the TV settings or within t
 - **Prayer Times & Adzan for Kota Batam**:
   - Automatically calculates the five daily prayer times (Subuh, Dzuhur, Ashar, Maghrib, Isya) for Kota Batam (`1.1301° N, 104.0529° E`).
   - Next prayer countdown displayed directly on the home screen.
-  - Background alarm scheduling (`AlarmManager.RTC_WAKEUP`) ensures timely alerts even if the launcher is paused.
+  - Background alarm scheduling (`AlarmManager.RTC_WAKEUP`) ensures timely alerts even if the launcher is in the background or sleeping.
+  - **Smart Audio Focus Management**: Automatically pauses background media apps (YouTube, Spotify, video players) during the Adzan call, and seamlessly resumes playback once the Adzan finishes or is dismissed.
+  - **Floating Banner Overlay**: Displays a sleek frosted-glass alert banner on top of other running apps (e.g. while watching YouTube) without stealing remote control focus.
   - High-priority system heads-up notification and centered on-screen modal banner.
   - Clear Adzan audio playback with one-click silence using any remote control key.
+- **Brand Identity & Aesthetic Assets**:
+  - Distinctive Konsep A branding: 3D crystal frosted monogram "A" with embedded play button and luminous cyan/silver neon accents.
+  - Custom 16:9 Android TV Leanback launcher banner.
 - **Adzan Sound Control**:
   - **TV Settings**: `Pengaturan (Settings) > Widget > Jadwal Sholat & Adzan > Suara adzan` on/off toggle.
   - **Drawer Widget**: Interactive prayer times card with visual sound badge (`Suara Adzan: Aktif` / `Suara Adzan: Senyap`) and instant toggle on click.
@@ -52,7 +57,7 @@ Easily toggle Adzan sound on or off directly through the TV settings or within t
 ## 🛠️ Building & Installing
 
 ### Prerequisites
-- JDK 17+ or JDK 21+
+- JDK 17+ or JDK 21+ (compatible with modern JDKs)
 - Android SDK (`build-tools 34.0.0` or `35.0.0`, `platforms/android-34`)
 - ADB tools for TV connection
 
@@ -61,7 +66,7 @@ Run the build script:
 ```bash
 bash ./build.sh
 ```
-This produces `FreeMyTV.apk` in the root directory.
+This compiles the project and produces **`ArsyanTV.apk`** in the root directory.
 
 ### Install to Android TV
 1. Enable **Developer Options** and **Network Debugging / USB Debugging** on your Android TV.
@@ -71,8 +76,13 @@ This produces `FreeMyTV.apk` in the root directory.
    ```
 3. Install the APK:
    ```bash
-   adb -s <TV_IP_ADDRESS>:5555 install -r FreeMyTV.apk
+   adb -s <TV_IP_ADDRESS>:5555 install -r ArsyanTV.apk
    ```
+4. Grant the display overlay permission (for the on-screen Adzan banner over other apps):
+   ```bash
+   adb -s <TV_IP_ADDRESS>:5555 shell appops set io.freemytv SYSTEM_ALERT_WINDOW allow
+   ```
+   *(Alternatively, toggle on in TV Settings: **Apps > Special app access > Display over other apps > Arsyan TV**).*
 
 ---
 
