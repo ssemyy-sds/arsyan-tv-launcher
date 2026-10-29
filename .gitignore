@@ -21,3 +21,7 @@ camera-still.jpg
 *.bak
 prototype/
 onvif_watch.py
+
+# AI agent skills & rules
+.agents/
+.agent/

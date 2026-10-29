@@ -3849,7 +3849,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float cw = 580 * k;
         float ch = 106 * k;
         float left = right - cw;
-        float top = 580 * k;
+        float top = 618 * k;
         float radius = 22 * k;
 
         nowPlayingRect.set(left, top, right, top + ch);
