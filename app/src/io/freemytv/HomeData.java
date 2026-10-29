@@ -170,6 +170,7 @@ final class HomeData {
     static final class Weather {
         double temp = Double.NaN, max = Double.NaN, min = Double.NaN;
         int code = -1;
+        int aqi = -1;
         boolean isDay = true;
         long sunrise, sunset;   // today's, in epoch ms
         // Next hours (starting at the next full hour): time, temperature, code and day/night.
@@ -217,6 +218,7 @@ final class HomeData {
             if (w != null && weatherPlace().equals(cache.getString("weatherPlace", ""))) {
                 weather = parseWeather(w);
                 weatherAt = cache.getLong("weatherAt", 0);
+                weather.aqi = cache.getInt("aqi", -1);
             }
         } catch (Exception ignored) {}
     }
@@ -257,14 +259,20 @@ final class HomeData {
                 }
             });
         }
-        if (!fetchingWeather && (now - weatherAt > WEATHER_EVERY || now < weatherAt) && !failedRecently(weatherFailedAt, now)) {
+        if (!fetchingWeather && (now - weatherAt > WEATHER_EVERY || now < weatherAt || weather.aqi <= 0) && !failedRecently(weatherFailedAt, now)) {
             fetchingWeather = true;
             io.execute(() -> {
                 try {
                     String body = get(weatherUrl());
                     weather = parseWeather(body);
                     weatherAt = System.currentTimeMillis();
-                    cache.edit().putString("weather", body).putLong("weatherAt", weatherAt).putString("weatherPlace", weatherPlace()).apply();
+                    try {
+                        String aqiUrl = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + Prefs.latitude() + "&longitude=" + Prefs.longitude() + "&current=us_aqi,pm2_5";
+                        String aqiBody = get(aqiUrl);
+                        JSONObject aqiCurrent = new JSONObject(aqiBody).optJSONObject("current");
+                        if (aqiCurrent != null) weather.aqi = aqiCurrent.optInt("us_aqi", -1);
+                    } catch (Exception ignored) {}
+                    cache.edit().putString("weather", body).putLong("weatherAt", weatherAt).putString("weatherPlace", weatherPlace()).putInt("aqi", weather.aqi).apply();
                     notifyListeners();
                 } catch (Exception e) {
                     weatherFailedAt = System.currentTimeMillis();
@@ -577,6 +585,16 @@ final class HomeData {
     static String degrees(double v) {
         if (Double.isNaN(v)) return "—";
         return Math.round(fahrenheit() ? v * 9 / 5 + 32 : v) + "°";
+    }
+
+    static String aqiCategory(int aqi) {
+        if (aqi <= 0) return "";
+        if (aqi <= 50) return Ui.indo ? "Baik" : Ui.ru ? "Хорошо" : "Good";
+        if (aqi <= 100) return Ui.indo ? "Sedang" : Ui.ru ? "Умеренно" : "Moderate";
+        if (aqi <= 150) return Ui.indo ? "Sensitif" : Ui.ru ? "Чувствит." : "Sensitive";
+        if (aqi <= 200) return Ui.indo ? "Tidak Sehat" : Ui.ru ? "Нездоровый" : "Unhealthy";
+        if (aqi <= 300) return Ui.indo ? "Sgt Tdk Sehat" : "Very Unhealthy";
+        return Ui.indo ? "Berbahaya" : "Hazardous";
     }
 
     private static boolean fahrenheit() {

@@ -236,7 +236,7 @@ public class SettingsActivity extends Activity {
             for (int i = 0; i < pop.length; i++) pop[i] = new Spring(0.28f, 0.85f, 0);
             click = new Click(a);
             setFocusable(true);
-            setContentDescription("Weatherglass TV");
+            setContentDescription("ArsyanTV");
             // TalkBack: one item per row, id = row + 1.
             spoken = new Spoken(this, new Spoken.Source() {
                 @Override public void items(List<Integer> out) { for (int i = 1; i <= rowCount(); i++) out.add(i); }
@@ -286,7 +286,7 @@ public class SettingsActivity extends Activity {
             }
             String[] v = settingValues();
             switch (s) {
-                case S_HOME: return freeActive() ? "Weatherglass TV" : Ui.tr("Original", "Original");
+                case S_HOME: return freeActive() ? "ArsyanTV" : Ui.tr("Original", "Original");
                 case S_SCREENSAVER: return Ui.tr("Ver agora", "Preview");
                 case S_APPEARANCE: return v[2];
                 case S_WALLPAPER: return v[WALLPAPER_ROW];
@@ -353,7 +353,7 @@ public class SettingsActivity extends Activity {
                     return sectionName(row) + (value.isEmpty() ? "" : ", " + value);
                 }
                 case HOME_CHOICE: {
-                    String name = row == 0 ? "Weatherglass TV, " + Ui.tr("sem anúncios, com a tela de descanso nova", "no ads, with the new screensaver")
+                    String name = row == 0 ? "ArsyanTV, " + Ui.tr("sem anúncios, com a tela de descanso nova", "no ads, with the new screensaver")
                             : "Original, " + Ui.tr("o Início de fábrica da TV", "the TV's factory home screen");
                     boolean inUse = (row == 0) == freeActive();
                     return name + (inUse ? Ui.tr(". Em uso", ". In use") : "") + ", " + (row + 1) + Ui.tr(" de 2", " of 2");
@@ -715,9 +715,9 @@ public class SettingsActivity extends Activity {
             c.drawLine(cx, cy - 1 * k, cx, cy + 6 * k, stroke);
         }
 
-        /** Home Screen: Weatherglass TV or the original (a radio on the one in use), then how they compare. */
+        /** Home Screen: ArsyanTV or the original (a radio on the one in use), then how they compare. */
         private void drawChoice(Canvas c) {
-            String[][] options = {{"Weatherglass TV", Ui.tr("Sem anúncios, com a tela de descanso nova", "No ads, with the new screensaver")},
+            String[][] options = {{"ArsyanTV", Ui.tr("Sem anúncios, com a tela de descanso nova", "No ads, with the new screensaver")},
                     {Ui.tr("Original", "Original"), Ui.tr("O Início de fábrica da TV", "The TV's factory home screen")}};
             int current = freeActive() ? 0 : 1;
             for (int i = 0; i < 2; i++) {
@@ -752,7 +752,7 @@ public class SettingsActivity extends Activity {
             float y = top + 42 * k;
             c.drawText(Ui.tr("COMPARAÇÃO", "COMPARISON"), x + 10 * k, y, header);
             header.setTextAlign(Paint.Align.RIGHT);
-            c.drawText("WEATHERGLASS", colA - 10 * k, y, header);
+            c.drawText("ARSYANTV", colA - 10 * k, y, header);
             c.drawText("ORIGINAL", colB - 10 * k, y, header);
             header.setTextAlign(Paint.Align.LEFT);
             JSONObject metrics = state.optJSONObject("metrics");
@@ -892,13 +892,13 @@ public class SettingsActivity extends Activity {
         private void drawCare(Canvas c) {
             Dashboard.Stats st = stats();
             float x = (L + INSET) * k, y = (TOP + 26) * k, width = (R - L - 2 * INSET) * k;
-            // Memory: in use of the total, with Weatherglass's own share, and a bar (amber from 85%)
+            // Memory: in use of the total, with ArsyanTV's own share, and a bar (amber from 85%)
             int pct = Math.round(st.memUsed * 100f / Math.max(1, st.memTotal));
             c.drawText(Ui.tr("MEMÓRIA", "MEMORY"), x, y, header);
             y += 44 * k;
             rowLabel.setColor(0xF2FFFFFF);
             c.drawText(pct + "%", x, y, rowLabel);
-            c.drawText(Dashboard.gb(st.memUsed) + " " + Ui.tr("de", "of") + " " + Dashboard.gb(st.memTotal) + "  ·  Weatherglass "
+            c.drawText(Dashboard.gb(st.memUsed) + " " + Ui.tr("de", "of") + " " + Dashboard.gb(st.memTotal) + "  ·  ArsyanTV "
                     + Math.round(st.memOurs / 1048576f) + " MB", x + 90 * k, y, notice);
             y += 18 * k;
             fill.setColor(0x24FFFFFF);
@@ -1055,7 +1055,7 @@ public class SettingsActivity extends Activity {
             y += 64 * k;
             c.drawText(Ui.tr("SOBRE", "ABOUT"), x, y, header);
             c.drawText(versionName(getContext()), x, y + 40 * k, notice);
-            c.drawText(Ui.tr("Modificado por xACTDx", "Modified by xACTDx"), x, y + 74 * k, notice);
+            c.drawText(Ui.tr("Modificado por semy", "Modified by semy"), x, y + 74 * k, notice);
             c.drawText(Ui.tr("Baseado no Free My TV, de simbasjungles · Licença MIT",
                     "Based on Free My TV by simbasjungles · MIT License"), x, y + 108 * k, hint);
         }
@@ -1122,9 +1122,9 @@ public class SettingsActivity extends Activity {
 
         private static String versionName(Context c) {
             try {
-                return "Weatherglass TV " + c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
+                return "ArsyanTV " + c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
             } catch (android.content.pm.PackageManager.NameNotFoundException e) {
-                return "Weatherglass TV";
+                return "ArsyanTV";
             }
         }
 

@@ -325,15 +325,15 @@ final class HomeMode {
                     AppLog.w("remote buttons service: " + e.getMessage());
                 }
             }
-            notice(c, Ui.tr("Weatherglass TV ligado: Início e tela de descanso novos, " + disabled.size() + " apps desligados.",
-                    "Weatherglass TV is on: new home screen and screensaver, " + disabled.size() + " apps turned off."));
-            busy(c, Ui.tr("Medindo o Weatherglass TV…", "Measuring Weatherglass TV…"));
+            notice(c, Ui.tr("ArsyanTV ligado: Início e tela de descanso novos, " + disabled.size() + " apps desligados.",
+                    "ArsyanTV is on: new home screen and screensaver, " + disabled.size() + " apps turned off."));
+            busy(c, Ui.tr("Medindo o ArsyanTV…", "Measuring ArsyanTV…"));
             measureHomeTime(c, adb, FREE);
             done(c, null);
             adb.shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME");
             ModeJob.schedule(c, ModeJob.MEMORY, FREE, 120_000);
         } catch (Exception e) {
-            done(c, Ui.tr("Não deu para ligar o Weatherglass TV: ", "Couldn't turn on Weatherglass TV: ") + (Ui.ru ? Russian.text(e.getMessage() == null ? "" : e.getMessage()) : e.getMessage()));
+            done(c, Ui.tr("Não deu para ligar o ArsyanTV: ", "Couldn't turn on ArsyanTV: ") + (Ui.ru ? Russian.text(e.getMessage() == null ? "" : e.getMessage()) : e.getMessage()));
         }
     }
 
@@ -430,7 +430,7 @@ final class HomeMode {
                 restoreScreensaver(adb, s);
                 s.put("homeReverted", true).put("disabled", kept);
                 save(app, s);
-                notice(app, Ui.tr("O Início do Weatherglass TV caiu 3 vezes seguidas; voltei para o Início original.",
+                notice(app, Ui.tr("O Início do ArsyanTV caiu 3 vezes seguidas; voltei para o Início original.",
                         "Weatherglass TV's home screen crashed 3 times in a row; I switched back to the original one."));
                 adb.shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME");
             } catch (Exception e) {

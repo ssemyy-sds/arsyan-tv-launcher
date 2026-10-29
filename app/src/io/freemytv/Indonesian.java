@@ -155,7 +155,8 @@ final class Indonesian {
             case "MIDDAY": return "TENGAH HARI";
             case "Measuring Weatherglass TV…": return "Mengukur Weatherglass TV…";
             case "Measuring the original home screen…": return "Mengukur layar utama asli…";
-            case "Modified by xACTDx": return "Dimodifikasi oleh xACTDx";
+            case "Modified by semy": return "Dimodifikasi oleh semy";
+            case "Modified by xACTDx": return "Dimodifikasi oleh semy";
             case "Morning": return "Pagi";
             case "Motion": return "Gerakan";
             case "Moving ": return "Memindahkan ";

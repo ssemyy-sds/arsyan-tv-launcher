@@ -16,6 +16,7 @@ import android.graphics.Rect;
 import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
+import android.graphics.Typeface;
 import android.media.tv.TvInputManager;
 import android.os.Handler;
 import android.os.Looper;
@@ -270,6 +271,15 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int prayerNext = -1, prayerNextIndex;
     private String prayerLine = "", prayerCountdown = "";
     private final String[] prayerTimeText = new String[5];
+    // Daily Doa (Doa Harian)
+    private DailyDoa.Entry cachedDoaEntry;
+    private StaticLayout cachedDoaArabicLayout;
+    private StaticLayout cachedDoaTransLayout;
+    private long cachedDoaDay = -1;
+    private float cachedDoaK = -1;
+    private final RectF doaCardRect = new RectF();
+    private Paint doaHeaderPaint;
+    private TextPaint doaArabicPaint, doaTransPaint;
     private final Spring drawer = new Spring(0.46f, 0.92f, 0);
     private boolean drawerOpen;
     private int drawerIndex;
@@ -339,6 +349,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private Paint lAmPm;
     private long weatherLineAt = -1;
     private int weatherLinePrefs = -1;
+    private int weatherLineAqi = -1;
     private String weatherLineLanguage = "";
     private long clockMinute = -1;
     private boolean okDown, backDown;
@@ -3344,12 +3355,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         applyTone();
         if (liteOn()) {
             drawLiteClock(c);
+            drawDailyDoa(c);
             return;
         }
         if (!picksOn()) {
             // Top left, level with the corner buttons, at the text size from Settings → Appearance (it scales from
             // that corner): the sky stays open above the shelf.
             drawClock(c);
+            drawDailyDoa(c);
             return;   // the rates are drawn with the shelf (drawPlatter): this layer ends above it
         }
         drawForYou(c);
@@ -3716,16 +3729,18 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             drawPrayerLine(c, x, 40 * k);
             return;
         }
-        if (data.weatherAt != weatherLineAt || Prefs.version != weatherLinePrefs || !Ui.language.equals(weatherLineLanguage)) {
+        if (data.weatherAt != weatherLineAt || Prefs.version != weatherLinePrefs || !Ui.language.equals(weatherLineLanguage) || wx.aqi != weatherLineAqi) {
             weatherLineAt = data.weatherAt;
             weatherLinePrefs = Prefs.version;
             weatherLineLanguage = Ui.language;
+            weatherLineAqi = wx.aqi;
             weatherLine = HomeData.degrees(wx.temp) + "  " + HomeData.condition(wx.code, wx.isDay) + "   "
                     + (Ui.ru ? "Макс. " + HomeData.degrees(wx.max) + "  Мин. " + HomeData.degrees(wx.min)
                     : Ui.indo ? "T:" + HomeData.degrees(wx.max) + "  R:" + HomeData.degrees(wx.min)
                     : Ui.en ? "H:" + HomeData.degrees(wx.max) + "  L:" + HomeData.degrees(wx.min)
                     : Ui.de ? "H:" + HomeData.degrees(wx.max) + "  T:" + HomeData.degrees(wx.min)
-                    : "Máx. " + HomeData.degrees(wx.max) + "  Mín. " + HomeData.degrees(wx.min));
+                    : "Máx. " + HomeData.degrees(wx.max) + "  Mín. " + HomeData.degrees(wx.min))
+                    + (wx.aqi > 0 ? "   ·   AQI " + wx.aqi + " (" + HomeData.aqiCategory(wx.aqi) + ")" : "");
         }
         float size = 40 * k, base = L_WEATHER_BASE * k;
         String symbol = Symbols.weather(wx.code, wx.isDay);
@@ -3742,6 +3757,67 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float sw = Symbols.width(getContext(), "bedtime", size);
         Symbols.draw(getContext(), c, "bedtime", x + symbolWidth / 2, base - Ui.halfCap(lWeather), size, lWeather.getColor());
         c.drawText(prayerLine, x + Math.max(sw, symbolWidth) + 16 * k, base, lWeather);
+    }
+
+    /** Daily prayer/ayah card on the top right (Config.PRAYER_TIMES). */
+    private void drawDailyDoa(Canvas c) {
+        if (!Config.PRAYER_TIMES) return;
+        long day = System.currentTimeMillis() / (24 * 60 * 60_000L);
+        float cw = 720 * k;
+        int textWidth = Math.max(1, Math.round(cw));
+        if (day != cachedDoaDay || cachedDoaK != k || cachedDoaEntry == null) {
+            cachedDoaDay = day;
+            cachedDoaK = k;
+            cachedDoaEntry = DailyDoa.today();
+            if (doaHeaderPaint == null) {
+                doaHeaderPaint = Ui.text(Ui.semibold, 18 * k, lDate.getColor());
+                doaHeaderPaint.setLetterSpacing(0.06f);
+                doaArabicPaint = new TextPaint(Ui.text(Typeface.DEFAULT, 34 * k, lClock.getColor()));
+                doaTransPaint = new TextPaint(Ui.text(Ui.regular, 21 * k, lWeather.getColor()));
+            } else {
+                doaHeaderPaint.setTextSize(18 * k);
+                doaArabicPaint.setTextSize(34 * k);
+                doaTransPaint.setTextSize(21 * k);
+            }
+            cachedDoaArabicLayout = StaticLayout.Builder.obtain(
+                    cachedDoaEntry.arabic, 0, cachedDoaEntry.arabic.length(), doaArabicPaint, textWidth)
+                    .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                    .setLineSpacing(0, 1.4f)
+                    .build();
+            cachedDoaTransLayout = StaticLayout.Builder.obtain(
+                    cachedDoaEntry.translation, 0, cachedDoaEntry.translation.length(), doaTransPaint, textWidth)
+                    .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                    .setLineSpacing(0, 1.3f)
+                    .build();
+        }
+
+        int clockColor = lClock.getColor();
+        int dimColor = lWeather.getColor();
+        doaArabicPaint.setColor(clockColor);
+        doaArabicPaint.setShadowLayer(8 * k, 0, 1.5f * k, tone(0x40000000, 0x99000000));
+        doaTransPaint.setColor(dimColor);
+        doaTransPaint.setShadowLayer(6 * k, 0, 1 * k, tone(0x33000000, 0x88000000));
+        doaHeaderPaint.setColor(dimColor);
+        doaHeaderPaint.setShadowLayer(6 * k, 0, 1 * k, tone(0x33000000, 0x88000000));
+
+        float right = (1920 - MARGIN) * k;
+        float left = right - cw;
+        float top = 340 * k;
+
+        doaHeaderPaint.setTextAlign(Paint.Align.CENTER);
+        float headerY = top + Ui.cap(doaHeaderPaint);
+        c.drawText(cachedDoaEntry.title, left + cw / 2, headerY, doaHeaderPaint);
+
+        c.save();
+        c.translate(left, headerY + 16 * k);
+        cachedDoaArabicLayout.draw(c);
+        c.restore();
+
+        float arabicH = cachedDoaArabicLayout.getHeight();
+        c.save();
+        c.translate(left, headerY + 16 * k + arabicH + 14 * k);
+        cachedDoaTransLayout.draw(c);
+        c.restore();
     }
 
     /** Works out today's prayer times and the next one, once a minute; false without a location. */
