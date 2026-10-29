@@ -271,6 +271,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int prayerNext = -1, prayerNextIndex;
     private String prayerLine = "", prayerCountdown = "";
     private final String[] prayerTimeText = new String[5];
+    // Now Playing widget (BitChord & universal media)
+    private final RectF nowPlayingRect = new RectF();
+    private final RectF nowPlayingCoverRect = new RectF();
+    private Paint npHeaderPaint, npTitlePaint, npArtistPaint;
+
     // Daily Doa (Doa Harian)
     private DailyDoa.Entry cachedDoaEntry;
     private StaticLayout cachedDoaArabicLayout;
@@ -520,6 +525,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         AdzanAlert.setListener(() -> {
             if (toastLayer != null) toastLayer.postInvalidate();
             wake();
+        });
+        NowPlaying.setListener(() -> {
+            postInvalidate();
         });
     }
 
@@ -3356,6 +3364,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (liteOn()) {
             drawLiteClock(c);
             drawDailyDoa(c);
+            drawNowPlaying(c);
             return;
         }
         if (!picksOn()) {
@@ -3363,6 +3372,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             // that corner): the sky stays open above the shelf.
             drawClock(c);
             drawDailyDoa(c);
+            drawNowPlaying(c);
             return;   // the rates are drawn with the shelf (drawPlatter): this layer ends above it
         }
         drawForYou(c);
@@ -3818,6 +3828,115 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         c.translate(left, headerY + 16 * k + arabicH + 14 * k);
         cachedDoaTransLayout.draw(c);
         c.restore();
+    }
+
+    /** Now Playing music card under Daily Doa (BitChord / universal media player). */
+    private void drawNowPlaying(Canvas c) {
+        if (!NowPlaying.hasActiveMedia()) return;
+
+        if (npHeaderPaint == null) {
+            npHeaderPaint = Ui.text(Ui.semibold, 11 * k, 0x99FFFFFF);
+            npHeaderPaint.setLetterSpacing(0.08f);
+            npTitlePaint = Ui.text(Ui.semibold, 18.5f * k, 0xFFFFFFFF);
+            npArtistPaint = Ui.text(Ui.medium, 14 * k, 0xB3FFFFFF);
+        } else {
+            npHeaderPaint.setTextSize(11 * k);
+            npTitlePaint.setTextSize(18.5f * k);
+            npArtistPaint.setTextSize(14 * k);
+        }
+
+        float right = (1920 - MARGIN) * k;
+        float cw = 580 * k;
+        float ch = 106 * k;
+        float left = right - cw;
+        float top = 580 * k;
+        float radius = 22 * k;
+
+        nowPlayingRect.set(left, top, right, top + ch);
+
+        // Glass background card
+        fill.setShader(null);
+        fill.setColor(0x55000000);
+        c.drawRoundRect(nowPlayingRect, radius, radius, fill);
+        fill.setColor(0x18FFFFFF);
+        c.drawRoundRect(nowPlayingRect, radius, radius, fill);
+        border.setColor(0x28FFFFFF);
+        border.setStyle(Paint.Style.STROKE);
+        border.setStrokeWidth(1.2f * k);
+        c.drawRoundRect(nowPlayingRect, radius, radius, border);
+
+        // Cover art
+        float cs = 72 * k;
+        float cx = left + 17 * k;
+        float cy = top + (ch - cs) / 2;
+        nowPlayingCoverRect.set(cx, cy, cx + cs, cy + cs);
+        float coverRad = 14 * k;
+
+        Bitmap cover = NowPlaying.getCover();
+        if (cover != null && !cover.isRecycled()) {
+            coverImage(c, cover, nowPlayingCoverRect, coverRad, 1f);
+        } else {
+            fill.setColor(0x33FFFFFF);
+            c.drawRoundRect(nowPlayingCoverRect, coverRad, coverRad, fill);
+            Symbols.draw(getContext(), c, "play", cx + cs / 2, cy + cs / 2, 28 * k, 0x80FFFFFF);
+        }
+
+        // Texts
+        float textX = cx + cs + 16 * k;
+        float btnRadius = 20 * k;
+        float bx = right - 32 * k;
+        float by = top + ch / 2;
+        float maxTextW = Math.max(10, bx - btnRadius - 16 * k - textX);
+
+        float headerY = top + 26 * k;
+        c.drawText("NOW PLAYING", textX, headerY, npHeaderPaint);
+
+        String fullTitle = NowPlaying.getTitle();
+        String titleStr = android.text.TextUtils.ellipsize(fullTitle, new android.text.TextPaint(npTitlePaint), maxTextW, android.text.TextUtils.TruncateAt.END).toString();
+        float titleY = headerY + 22 * k;
+        c.drawText(titleStr, textX, titleY, npTitlePaint);
+
+        String fullArtist = NowPlaying.getArtist();
+        String artistStr = android.text.TextUtils.ellipsize(fullArtist, new android.text.TextPaint(npArtistPaint), maxTextW, android.text.TextUtils.TruncateAt.END).toString();
+        float artistY = titleY + 19 * k;
+        c.drawText(artistStr, textX, artistY, npArtistPaint);
+
+        // Progress bar line
+        float progressY = top + ch - 15 * k;
+        float progressRight = bx - btnRadius - 16 * k;
+        border.setColor(0x20FFFFFF);
+        border.setStrokeWidth(2 * k);
+        c.drawLine(textX, progressY, progressRight, progressY, border);
+        border.setColor(0x80FFFFFF);
+        c.drawLine(textX, progressY, textX + (progressRight - textX) * 0.42f, progressY, border);
+
+        // Play/Pause button on the right
+        fill.setColor(0x26FFFFFF);
+        c.drawCircle(bx, by, btnRadius, fill);
+        border.setColor(0x40FFFFFF);
+        border.setStrokeWidth(1.2f * k);
+        c.drawCircle(bx, by, btnRadius, border);
+
+        boolean isPlaying = NowPlaying.isPlaying();
+        if (isPlaying) {
+            // Draw Pause icon (two vertical bars)
+            fill.setColor(0xFFFFFFFF);
+            float barW = 3.5f * k;
+            float barH = 13 * k;
+            float gap = 3.5f * k;
+            c.drawRoundRect(bx - gap / 2 - barW, by - barH / 2, bx - gap / 2, by + barH / 2, 1.5f * k, 1.5f * k, fill);
+            c.drawRoundRect(bx + gap / 2, by - barH / 2, bx + gap / 2 + barW, by + barH / 2, 1.5f * k, 1.5f * k, fill);
+        } else {
+            // Draw Play triangle
+            fill.setColor(0xFFFFFFFF);
+            float pw = 12 * k, ph = 14 * k;
+            Path p = new Path();
+            p.moveTo(bx - pw * 0.35f, by - ph / 2);
+            p.lineTo(bx + pw * 0.65f, by);
+            p.lineTo(bx - pw * 0.35f, by + ph / 2);
+            p.close();
+            c.drawPath(p, fill);
+        }
     }
 
     /** Works out today's prayer times and the next one, once a minute; false without a location. */
