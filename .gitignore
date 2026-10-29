@@ -25,3 +25,6 @@ onvif_watch.py
 # AI agent skills & rules
 .agents/
 .agent/
+
+# Video recordings
+*.mp4

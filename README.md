@@ -1,13 +1,13 @@
 # Arsyan TV Launcher v2.0
 
-A clean, modern, and aesthetic Android TV launcher inspired by Nothing OS and Apple TV design philosophies. Built natively for Android TV and Google TV devices with fluid glassmorphism, clean typography, live dynamic weather, real-time Air Quality Index (AQI), currency exchange rates, daily Islamic prayers/ayahs, and automatic Adzan prayer time notifications specifically tailored for Kota Batam.
+A clean, modern, and aesthetic Android TV launcher inspired by Nothing OS and Apple TV design philosophies. Built natively for Android TV and Google TV devices with fluid glassmorphism, clean typography, live dynamic weather, real-time Air Quality Index (AQI), currency exchange rates, daily Islamic prayers/ayahs, **Now Playing music overlay (BitChord / Spotify / YouTube Music)**, and automatic Adzan prayer time notifications specifically tailored for Kota Batam.
 
 ---
 
 ## 📺 Showcase
 
-### 1. Minimalist Home Screen (v2.0)
-Clean typography layout for the clock, real-time weather, AQI index, prayer countdown, and daily prayers (Doa Harian) floating seamlessly on top of dynamic live wallpapers.
+### 1. Minimalist Home Screen with Now Playing Widget
+Clean typography layout for the clock, real-time weather, AQI index, prayer countdown, and daily prayers (Doa Harian). When music is playing from **BitChord** or other media players, a sleek frosted-glass **Now Playing card** appears seamlessly above the currency line with album art, track details, progress bar, and play/pause status.
 
 ![Home Screen](screenshots/home_screen.png)
 
@@ -32,6 +32,11 @@ Easily toggle Adzan sound on or off directly through the TV settings or within t
 - **Exclusive Focus on Android TV**:
   - Engineered natively for Android TV & Google TV (API 28+ / Android 9 to Android 14+).
   - Lightweight custom drawing pipeline using native Android `Canvas` without heavy WebView or hybrid framework overhead (runs at smooth 60 fps).
+- **Now Playing Music Widget (BitChord & Universal Media)**:
+  - Automatically captures active playback metadata from **BitChord** (`com.music.bitchord.tv`), Spotify, YouTube Music, and any Android media app via native `MediaSession`.
+  - Displays high-resolution rounded album cover art, song title, artist, progress line, and live play/pause indicator.
+  - Positioned symmetrically on the right side above currency rates.
+  - **Smart Visibility**: Automatically appears when music is playing or paused, and cleanly auto-hides when music stops to keep the home screen minimalist.
 - **Daily Prayer & Ayah (Doa Harian)**:
   - Curated collection of authentic Quranic ayahs and prophetic daily prayers.
   - Automatically rotates every day based on the calendar date.
@@ -45,7 +50,7 @@ Easily toggle Adzan sound on or off directly through the TV settings or within t
   - Next prayer countdown displayed directly on the home screen.
   - Background alarm scheduling (`AlarmManager.RTC_WAKEUP`) ensures timely alerts even if the launcher is in the background or sleeping.
   - **Smart Audio Focus Management**: Automatically pauses background media apps (YouTube, Spotify, video players) during the Adzan call, and seamlessly resumes playback once dismissed.
-  - **Floating Banner Overlay**: Displays a sleek frosted-glass alert banner on top of other running apps without stealing remote control focus.
+  - **Floating Banner Overlay**: Powered by a dedicated foreground service (`AdzanService`) to display a sleek frosted-glass alert banner on top of other running apps (like YouTube) without stealing remote control focus.
   - Full Adzan audio playback with one-click silence using any remote control key.
 - **Weather & Exchange Rates**:
   - Open-Meteo integration for accurate temperature, conditions, and daily high/low.
@@ -85,7 +90,10 @@ This compiles the project and produces **`ArsyanTV.apk`** in the root directory.
    ```bash
    adb -s <TV_IP_ADDRESS>:5555 shell appops set io.freemytv SYSTEM_ALERT_WINDOW allow
    ```
-   *(Alternatively, toggle on in TV Settings: **Apps > Special app access > Display over other apps > Arsyan TV**).*
+5. Grant notification listener permission (for the Now Playing music card):
+   ```bash
+   adb -s <TV_IP_ADDRESS>:5555 shell cmd notification allow_listener io.freemytv/.NowPlayingService
+   ```
 
 ---
 
@@ -95,6 +103,7 @@ This project is built upon the wonderful work of the open-source community:
 
 - **[Free My TV](https://github.com/simbasjungles/free-my-tv)** by [simbasjungles](https://github.com/simbasjungles) – The foundational open-source Android TV launcher codebase and design architecture.
 - **[WeatherGlass TV](https://github.com/faizaldjoo/weatherglass-tv)** by [faizaldjoo](https://github.com/faizaldjoo) – Islamic prayer calculations and weather glass UI inspiration.
+- **[BitChord](https://github.com/kushagrasinghx/BitChord)** by [kushagrasinghx](https://github.com/kushagrasinghx) – Open-source music client for Android TV.
 - Modified and maintained by **semy** (Arsyan TV).
 
 ---
