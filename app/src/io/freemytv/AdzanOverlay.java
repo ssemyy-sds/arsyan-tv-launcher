@@ -26,14 +26,15 @@ public final class AdzanOverlay {
     private static final Runnable autoDismissRunnable = new Runnable() {
         @Override
         public void run() {
-            dismiss();
+            Log.i(TAG, "Adzan overlay auto-dismiss timed out");
+            AdzanAlert.stopAudio();
         }
     };
 
     private AdzanOverlay() {}
 
     public static void show(Context context, String prayerName, String city) {
-        handler.post(new Runnable() {
+        Runnable showTask = new Runnable() {
             @Override
             public void run() {
                 try {
@@ -41,7 +42,7 @@ public final class AdzanOverlay {
                         Log.w(TAG, "Cannot show overlay: SYSTEM_ALERT_WINDOW not granted");
                         return;
                     }
-                    dismiss();
+                    dismissInternal();
 
                     windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
                     if (windowManager == null) return;
@@ -92,19 +93,32 @@ public final class AdzanOverlay {
                     textCol.addView(sub);
 
                     root.addView(textCol);
+                    root.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            AdzanAlert.stopAudio();
+                        }
+                    });
 
                     int windowType = Build.VERSION.SDK_INT >= 26
                         ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                         : WindowManager.LayoutParams.TYPE_SYSTEM_ALERT;
 
+                    int flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                        | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
+
+                    if (Build.VERSION.SDK_INT >= 27) {
+                        flags |= WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                               | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON;
+                    }
+
                     WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                         WindowManager.LayoutParams.WRAP_CONTENT,
                         WindowManager.LayoutParams.WRAP_CONTENT,
                         windowType,
-                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                            | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                            | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                            | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+                        flags,
                         PixelFormat.TRANSLUCENT
                     );
                     params.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
@@ -120,24 +134,36 @@ public final class AdzanOverlay {
                     Log.e(TAG, "Failed to show overlay", e);
                 }
             }
-        });
+        };
+
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            showTask.run();
+        } else {
+            handler.post(showTask);
+        }
+    }
+
+    private static void dismissInternal() {
+        handler.removeCallbacks(autoDismissRunnable);
+        if (windowManager != null && overlayView != null) {
+            try {
+                windowManager.removeView(overlayView);
+            } catch (Exception ignored) {}
+            overlayView = null;
+            Log.i(TAG, "Adzan overlay dismissed");
+        }
     }
 
     public static void dismiss() {
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    handler.removeCallbacks(autoDismissRunnable);
-                    if (windowManager != null && overlayView != null) {
-                        windowManager.removeView(overlayView);
-                        overlayView = null;
-                        Log.i(TAG, "Adzan overlay dismissed");
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Failed to dismiss overlay", e);
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            dismissInternal();
+        } else {
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    dismissInternal();
                 }
-            }
-        });
+            });
+        }
     }
 }

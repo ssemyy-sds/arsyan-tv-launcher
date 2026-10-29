@@ -137,11 +137,8 @@ public final class AdzanAlert {
             Log.e(TAG, "Notification failed", e);
         }
 
-        // 2. Show Overlay Banner over other apps (e.g. YouTube)
-        AdzanOverlay.show(context, activePrayerName, city);
-
-        // 3. Play Adzan Audio (with Audio Focus to pause background apps like YouTube)
-        playAudio(context);
+        // 2. Start Foreground Service to display overlay over other apps and play audio
+        AdzanService.start(context, activePrayerName);
 
         // 4. Notify UI listener
         if (listener != null) {
@@ -235,7 +232,6 @@ public final class AdzanAlert {
             player = null;
         }
         abandonAudioFocus();
-        AdzanOverlay.dismiss();
     }
 
     public static synchronized void playAudio(Context context) {
@@ -258,7 +254,7 @@ public final class AdzanAlert {
             player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                 @Override
                 public void onCompletion(MediaPlayer mp) {
-                    releasePlayer();
+                    stopAudio();
                 }
             });
             player.prepare();
@@ -273,6 +269,7 @@ public final class AdzanAlert {
     public static synchronized void stopAudio() {
         releasePlayer();
         AdzanOverlay.dismiss();
+        AdzanService.stop(null);
         activePrayerName = "";
         alertStartTime = 0;
         if (listener != null) {
