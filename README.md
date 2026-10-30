@@ -37,11 +37,15 @@ Easily toggle Adzan sound on or off directly through the TV settings or within t
   - Displays high-resolution rounded album cover art, song title, artist, progress line, and live play/pause indicator.
   - Positioned symmetrically on the right side above currency rates.
   - **Smart Visibility**: Automatically appears when music is playing or paused, and cleanly auto-hides when music stops to keep the home screen minimalist.
-- **Daily Prayer & Ayah (Doa Harian)**:
-  - Curated collection of authentic Quranic ayahs and prophetic daily prayers.
-  - Automatically rotates every day based on the calendar date.
-  - Rendered with clear Arabic typography with full tashkeel/harakat, chapter & verse reference header, and Indonesian translation.
-  - Frameless floating typography positioned symmetrically with the clock and adapting to day/night tones.
+- **Over-The-Air (OTA) Updates via GitHub Releases**:
+  - Direct in-app update mechanism powered by GitHub Releases API (`ssemyy-sds/arsyan-tv-launcher`).
+  - Automatic background update checks with ambient notification banners when new versions are available.
+  - Manual check & install directly from **Settings → About (Pembaruan Sistem / OTA)**.
+  - Features real-time download progress and seamless installation without requiring a computer or ADB connection for future updates.
+- **Dynamic Daily Prayer & Ayah (Doa Harian) from GitHub Raw**:
+  - Expanded to **71 authentic daily prayers and Quranic ayahs** sourced dynamically from GitHub Raw CDN (`iherbs/quran-json`).
+  - **Offline-First Architecture**: Caches prayers locally to ensure the home screen always loads instantly (0ms latency) even without an active internet connection.
+  - **Accurate Local Time Rotation**: Automatically switches to the next prayer at 00:00 midnight local TV time (`Calendar.DAY_OF_YEAR`), eliminating UTC timezone offset delays.
 - **Air Quality Index (AQI) for Kota Batam**:
   - Live Air Quality data integration via Open-Meteo Air Quality API.
   - Displays US AQI values and qualitative categories (`Baik`, `Sedang`, `Sensitif`, `Tidak Sehat`, dll.) directly alongside the weather line.
@@ -95,6 +99,9 @@ This compiles the project and produces **`ArsyanTV.apk`** in the root directory.
    adb -s <TV_IP_ADDRESS>:5555 shell cmd notification allow_listener io.freemytv/.NowPlayingService
    ```
 
+> [!TIP]
+> **Subsequent Updates (OTA):** Once Arsyan TV is installed, you no longer need to use ADB or a laptop for future updates! Simply publish a new release on GitHub, and your TV will detect and install the update wirelessly via **Settings → About → Pembaruan Sistem (OTA)**.
+
 ---
 
 ## 🙏 Credits & Acknowledgments
@@ -104,6 +111,7 @@ This project is built upon the wonderful work of the open-source community:
 - **[Free My TV](https://github.com/simbasjungles/free-my-tv)** by [simbasjungles](https://github.com/simbasjungles) – The foundational open-source Android TV launcher codebase and design architecture.
 - **[WeatherGlass TV](https://github.com/faizaldjoo/weatherglass-tv)** by [faizaldjoo](https://github.com/faizaldjoo) – Islamic prayer calculations and weather glass UI inspiration.
 - **[BitChord](https://github.com/kushagrasinghx/BitChord)** by [kushagrasinghx](https://github.com/kushagrasinghx) – Open-source music client for Android TV.
+- **[quran-json](https://github.com/iherbs/quran-json)** by [iherbs](https://github.com/iherbs) – Curated Indonesian daily prayer dataset.
 - Modified and maintained by **semy** (Arsyan TV).
 
 ---
