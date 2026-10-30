@@ -16,6 +16,7 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Android 11+: without this list the app can't "see" the other apps (getLeanbackLaunchIntentForPackage
          returns null). The shelf and streaming apps, the live TV apps and, through the <intent>, every TV app
@@ -186,5 +187,11 @@
                 <action android:name="io.freemytv.ADZAN_ALARM" />
             </intent-filter>
         </receiver>
+
+        <provider
+            android:name=".UpdateProvider"
+            android:authorities="io.freemytv.update"
+            android:exported="true"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>

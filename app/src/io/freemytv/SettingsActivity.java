@@ -290,6 +290,11 @@ public class SettingsActivity extends Activity {
                 case S_SCREENSAVER: return Ui.tr("Ver agora", "Preview");
                 case S_APPEARANCE: return v[2];
                 case S_WALLPAPER: return v[WALLPAPER_ROW];
+                case S_ABOUT: {
+                    OtaUpdate.Info info = OtaUpdate.getInfo();
+                    if (info.state == OtaUpdate.State.AVAILABLE) return "Update " + info.latestVersion;
+                    return versionName(getContext());
+                }
                 default: return "";
             }
         }
@@ -397,6 +402,7 @@ public class SettingsActivity extends Activity {
                 case MAIN: return TOP + i * (MAIN_H + GAP) + (i > S_SCREENSAVER ? DIVIDER : 0) + (i > S_REMOTE ? DIVIDER : 0);
                 case HOME_CHOICE: return TOP + i * (CHOICE_H + 8);
                 case CARE: return CARE_TOP + i * (LIST_H + GAP);
+                case ABOUT: return TOP + 38;
                 case HOME_SETTINGS: {
                     float y = TOP + i * (LIST_H + GAP);
                     for (int j = 0; j <= i; j++) if (groupTitle(j) != null) y += HEADER;
@@ -541,7 +547,7 @@ public class SettingsActivity extends Activity {
                 case MAIN: return SECTIONS;
                 case HOME_CHOICE: return 2;
                 case HOME_SETTINGS: return sectionRows().length;
-                case ABOUT: return 0;
+                case ABOUT: return 1;
                 case CARE: return CARE_ACTIONS.length;
                 case PICKER: return Math.min(PICK_VISIBLE, pickLabels.size());
                 case SHELF_EDIT: return Math.min(PICK_VISIBLE, shelfRows.size());
@@ -990,6 +996,27 @@ public class SettingsActivity extends Activity {
         /** About: the picks, the latest notices, and where this comes from. */
         private void drawAbout(Canvas c) {
             float x = (L + INSET) * k, y = (TOP + 26) * k;
+            c.drawText(Ui.tr("PEMBARUAN SISTEM (OTA)", "SYSTEM UPDATE (OTA)"), x, y, header);
+
+            float top = TOP + 38;
+            rowRect.set(L * k, top * k, R * k, (top + LIST_H) * k);
+            float f = drawRowBackground(c, 0);
+            rowLabel.setColor(blend(0xF2FFFFFF, INK, f));
+            float cy = rowRect.centerY(), base = cy + Ui.halfCap(rowLabel), right = rowRect.right - INSET * k;
+
+            OtaUpdate.Info info = OtaUpdate.getInfo();
+            String label = info.state == OtaUpdate.State.AVAILABLE ? Ui.tr("Pasang Pembaruan", "Install Update")
+                    : info.state == OtaUpdate.State.DOWNLOADING ? Ui.tr("Sedang Mengunduh", "Downloading")
+                    : Ui.tr("Periksa Pembaruan", "Check for Updates");
+            c.drawText(label, rowRect.left + INSET * k, base, rowLabel);
+
+            String otaStatus = info.message.isEmpty() ? ("v" + versionName(getContext())) : info.message;
+            int statusColor = info.state == OtaUpdate.State.AVAILABLE ? GREEN : blend(0x9EFFFFFF, 0x991C1C1E, f);
+            rowValue.setColor(statusColor);
+            float room = rowRect.width() - 2 * INSET * k - rowLabel.measureText(label) - 24 * k;
+            c.drawText(TextUtils.ellipsize(otaStatus, new TextPaint(rowValue), Math.max(60 * k, room), TextUtils.TruncateAt.END).toString(), right, base, rowValue);
+
+            y = (top + LIST_H + 46) * k;
             c.drawText(Ui.tr("RECOMENDAÇÕES", "RECOMMENDATIONS"), x, y, header);
             String error = recs.optString("error");
             int count = recs.optInt("count");
@@ -1720,7 +1747,18 @@ public class SettingsActivity extends Activity {
 
         private void activate() {
             Context c = getContext();
-            if (screen == ABOUT) return;
+            if (screen == ABOUT) {
+                if (focus == 0) {
+                    OtaUpdate.Info info = OtaUpdate.getInfo();
+                    if (info.state == OtaUpdate.State.AVAILABLE) {
+                        OtaUpdate.startDownloadAndInstall(c, inf -> postInvalidate());
+                    } else if (info.state != OtaUpdate.State.DOWNLOADING && info.state != OtaUpdate.State.CHECKING) {
+                        OtaUpdate.check(c, inf -> postInvalidate());
+                    }
+                    invalidate();
+                }
+                return;
+            }
             if (screen == CARE) {
                 runCare(focus);
                 invalidate();
@@ -1792,6 +1830,7 @@ public class SettingsActivity extends Activity {
             } else if (focus == S_ABOUT) {
                 screen = ABOUT;
                 focus = 0;
+                OtaUpdate.check(c, inf -> postInvalidate());
             } else {
                 activity.startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             }

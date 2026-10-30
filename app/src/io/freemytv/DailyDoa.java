@@ -1,8 +1,30 @@
 package io.freemytv;
 
+import android.content.Context;
+import android.util.Log;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
 
 final class DailyDoa {
+    private static final String TAG = "DailyDoa";
+    private static final String GITHUB_RAW_URL = "https://raw.githubusercontent.com/iherbs/quran-json/main/doa_harian.json";
+    private static final String CACHE_FILE = "doa_cache.json";
+    private static final long STALE_MS = 7 * 24 * 60 * 60_000L; // 7 hari
+
     static final class Entry {
         final String title;
         final String arabic;
@@ -15,7 +37,7 @@ final class DailyDoa {
         }
     }
 
-    private static final Entry[] ENTRIES = {
+    private static final Entry[] FALLBACK_ENTRIES = {
         new Entry(
             "DOA HARIAN · QS. AL-BAQARAH: 45",
             "وَاسْتَعِينُوا بِالصَّبْرِ وَالصَّلَاةِ ۚ وَإِنَّهَا لَكَبِيرَةٌ إِلَّا عَلَى الْخَاشِعِينَ",
@@ -93,11 +115,109 @@ final class DailyDoa {
         )
     };
 
-    /** Picks today's entry based on day of year. */
-    static Entry today() {
+    private static List<Entry> cachedList = null;
+    private static boolean refreshing = false;
+    private static final java.util.concurrent.ExecutorService EXECUTOR = java.util.concurrent.Executors.newSingleThreadExecutor();
+
+    private static synchronized List<Entry> getEntries(Context context) {
+        if (cachedList != null && !cachedList.isEmpty()) {
+            return cachedList;
+        }
+
+        List<Entry> diskList = loadFromDisk(context);
+        if (diskList != null && !diskList.isEmpty()) {
+            cachedList = diskList;
+            return cachedList;
+        }
+
+        List<Entry> fallback = new ArrayList<>();
+        Collections.addAll(fallback, FALLBACK_ENTRIES);
+        cachedList = fallback;
+        return cachedList;
+    }
+
+    /** Picks today's entry based on day of year (local TV time). */
+    static Entry today(Context context) {
+        List<Entry> list = getEntries(context);
         Calendar cal = Calendar.getInstance();
         int day = cal.get(Calendar.DAY_OF_YEAR);
-        return ENTRIES[Math.abs(day) % ENTRIES.length];
+        return list.get(Math.abs(day) % list.size());
+    }
+
+    static void refreshIfStale(Context context) {
+        if (refreshing || context == null) return;
+        File f = new File(context.getFilesDir(), CACHE_FILE);
+        long age = System.currentTimeMillis() - f.lastModified();
+        if (f.exists() && age < STALE_MS) return;
+
+        refreshing = true;
+        EXECUTOR.execute(() -> {
+            try {
+                HttpURLConnection conn = (HttpURLConnection) new URL(GITHUB_RAW_URL).openConnection();
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(8000);
+                conn.setRequestProperty("User-Agent", "ArsyanTV-Launcher");
+
+                if (conn.getResponseCode() == 200) {
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    try (InputStream in = conn.getInputStream()) {
+                        byte[] buf = new byte[8192];
+                        int n;
+                        while ((n = in.read(buf)) > 0) baos.write(buf, 0, n);
+                    }
+                    String json = baos.toString(StandardCharsets.UTF_8.name());
+                    List<Entry> parsed = parseJson(json);
+                    if (!parsed.isEmpty()) {
+                        File tmp = new File(context.getFilesDir(), CACHE_FILE + ".tmp");
+                        try (FileOutputStream fos = new FileOutputStream(tmp)) {
+                            fos.write(json.getBytes(StandardCharsets.UTF_8));
+                        }
+                        tmp.renameTo(f);
+                        synchronized (DailyDoa.class) {
+                            cachedList = parsed;
+                        }
+                        Log.i(TAG, "Doa harian loaded from GitHub Raw: " + parsed.size() + " items");
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to refresh doa harian from GitHub: " + e.getMessage());
+            } finally {
+                refreshing = false;
+            }
+        });
+    }
+
+    private static List<Entry> loadFromDisk(Context context) {
+        if (context == null) return null;
+        File f = new File(context.getFilesDir(), CACHE_FILE);
+        if (!f.exists()) return null;
+        try (FileInputStream fis = new FileInputStream(f)) {
+            byte[] b = new byte[(int) f.length()];
+            fis.read(b);
+            return parseJson(new String(b, StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static List<Entry> parseJson(String json) {
+        List<Entry> list = new ArrayList<>();
+        try {
+            JSONArray arr = new JSONArray(json);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject obj = arr.optJSONObject(i);
+                if (obj == null) continue;
+                String name = obj.optString("name", "Doa Harian").trim();
+                String arabic = obj.optString("text_ayah", "").trim();
+                String translation = obj.optString("text_id", "").trim();
+                if (!arabic.isEmpty() && !translation.isEmpty()) {
+                    String title = "DOA HARIAN · " + name.toUpperCase(Locale.ROOT);
+                    list.add(new Entry(title, arabic, translation));
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "parse error", e);
+        }
+        return list;
     }
 }
-

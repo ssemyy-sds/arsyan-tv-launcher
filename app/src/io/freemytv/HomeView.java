@@ -280,8 +280,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private DailyDoa.Entry cachedDoaEntry;
     private StaticLayout cachedDoaArabicLayout;
     private StaticLayout cachedDoaTransLayout;
-    private long cachedDoaDay = -1;
+    private int cachedDoaDay = -1;
     private float cachedDoaK = -1;
+    private long lastOtaCheck = 0;
     private final RectF doaCardRect = new RectF();
     private Paint doaHeaderPaint;
     private TextPaint doaArabicPaint, doaTransPaint;
@@ -472,6 +473,16 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
                 if (!Prefs.wallpaperMotion()) sky.invalidate();
             }
             updatePicks();      // three new ones every hour
+            DailyDoa.refreshIfStale(getContext());
+            long nowReal = android.os.SystemClock.elapsedRealtime();
+            if (lastOtaCheck == 0 || nowReal - lastOtaCheck > 12 * 3600_000L) {
+                lastOtaCheck = nowReal;
+                OtaUpdate.check(getContext(), info -> {
+                    if (info.state == OtaUpdate.State.AVAILABLE) {
+                        showToast("Pembaruan " + info.latestVersion + " tersedia (cek Pengaturan)");
+                    }
+                });
+            }
             handler.postDelayed(this, 15_000);
         }
     };
@@ -3772,13 +3783,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** Daily prayer/ayah card on the top right (Config.PRAYER_TIMES). */
     private void drawDailyDoa(Canvas c) {
         if (!Config.PRAYER_TIMES) return;
-        long day = System.currentTimeMillis() / (24 * 60 * 60_000L);
+        int day = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR);
         float cw = 720 * k;
         int textWidth = Math.max(1, Math.round(cw));
         if (day != cachedDoaDay || cachedDoaK != k || cachedDoaEntry == null) {
             cachedDoaDay = day;
             cachedDoaK = k;
-            cachedDoaEntry = DailyDoa.today();
+            cachedDoaEntry = DailyDoa.today(getContext());
             if (doaHeaderPaint == null) {
                 doaHeaderPaint = Ui.text(Ui.semibold, 18 * k, lDate.getColor());
                 doaHeaderPaint.setLetterSpacing(0.06f);
