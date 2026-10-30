@@ -1,6 +1,6 @@
-# Arsyan TV Launcher v2.0
+# Arsyan TV Launcher v2.5
 
-A clean, modern, and aesthetic Android TV launcher inspired by Nothing OS and Apple TV design philosophies. Built natively for Android TV and Google TV devices with fluid glassmorphism, clean typography, live dynamic weather, real-time Air Quality Index (AQI), currency exchange rates, daily Islamic prayers/ayahs, **Now Playing music overlay (BitChord / Spotify / YouTube Music)**, and automatic Adzan prayer time notifications specifically tailored for Kota Batam.
+A clean, modern, and aesthetic Android TV launcher inspired by Nothing OS and Apple TV design philosophies. Built natively for Android TV and Google TV devices with fluid glassmorphism, clean typography, live dynamic weather, real-time Air Quality Index (AQI), currency exchange rates, dynamic daily Islamic prayers/ayahs, **Now Playing music overlay (BitChord / Spotify / YouTube Music)**, **seamless Over-The-Air (OTA) updates**, and automatic Adzan prayer time notifications. Preconfigured with Kota Batam as default, with full support for any city across Indonesia and worldwide.
 
 ---
 
@@ -46,11 +46,13 @@ Easily toggle Adzan sound on or off directly through the TV settings or within t
   - Expanded to **71 authentic daily prayers and Quranic ayahs** sourced dynamically from GitHub Raw CDN (`iherbs/quran-json`).
   - **Offline-First Architecture**: Caches prayers locally to ensure the home screen always loads instantly (0ms latency) even without an active internet connection.
   - **Accurate Local Time Rotation**: Automatically switches to the next prayer at 00:00 midnight local TV time (`Calendar.DAY_OF_YEAR`), eliminating UTC timezone offset delays.
-- **Air Quality Index (AQI) for Kota Batam**:
+- **Air Quality Index (AQI) - Batam Default & Nationwide / Worldwide**:
   - Live Air Quality data integration via Open-Meteo Air Quality API.
   - Displays US AQI values and qualitative categories (`Baik`, `Sedang`, `Sensitif`, `Tidak Sehat`, dll.) directly alongside the weather line.
-- **Prayer Times & Adzan for Kota Batam**:
-  - Automatically calculates the five daily prayer times (Subuh, Dzuhur, Ashar, Maghrib, Isya) for Kota Batam (`1.1301° N, 104.0529° E`).
+  - Automatically queries the coordinates of your chosen city.
+- **Prayer Times & Adzan (Batam Default, Customizable to Any City)**:
+  - Automatically calculates the five daily prayer times (Subuh, Dzuhur, Ashar, Maghrib, Isya) using accurate astronomical solar positioning following Kemenag RI standards (Subuh 20°, Isya 18°, Syafi'i Asr, +2-3 min ihtiyat).
+  - Preconfigured for Kota Batam (`1.1301° N, 104.0529° E`), but fully supports any city across Indonesia (Jakarta, Surabaya, Bandung, Medan, Makassar, Semarang, dll.) or worldwide by setting your city in **Settings → Home Settings → City**.
   - Next prayer countdown displayed directly on the home screen.
   - Background alarm scheduling (`AlarmManager.RTC_WAKEUP`) ensures timely alerts even if the launcher is in the background or sleeping.
   - **Smart Audio Focus Management**: Automatically pauses background media apps (YouTube, Spotify, video players) during the Adzan call, and seamlessly resumes playback once dismissed.
@@ -63,6 +65,18 @@ Easily toggle Adzan sound on or off directly through the TV settings or within t
   - Restores the minimalist typographic aesthetic without frosted card boxes obscuring the wallpaper.
 - **Smooth Animations & Hardware Efficiency**:
   - Highly optimized for low-end to high-end Android TV boxes and Smart TVs (ZTE, Mi Box, TCL, Sony, etc.).
+
+---
+
+## 🌍 City & Regional Customization
+
+Secara default, Arsyan TV terkonfigurasi awal untuk **Kota Batam**. Namun, launcher ini sepenuhnya mendukung **seluruh kota di Indonesia maupun mancanegara**:
+
+1. Buka **Settings** (ikon gerigi di drawer aplikasi).
+2. Masuk ke menu **Home Settings → City**.
+3. Ketik nama kota Anda (contoh: `Jakarta`, `Surabaya`, `Bandung`, `Medan`, `Makassar`, `Semarang`, dll.).
+4. Pilih kota dari hasil pencarian.
+5. **Jadwal Sholat & Adzan, Prakiraan Cuaca, dan Indeks Kualitas Udara (AQI)** akan langsung terkalibrasi otomatis sesuai koordinat presisi kota yang dipilih.
 
 ---
 

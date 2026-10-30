@@ -235,9 +235,9 @@ public final class OtaUpdate {
     private static String getAppVersion(Context c) {
         try {
             PackageInfo p = c.getPackageManager().getPackageInfo(c.getPackageName(), 0);
-            return p.versionName != null ? p.versionName : "2.0";
+            return p.versionName != null ? p.versionName : "2.5";
         } catch (Exception e) {
-            return "2.0";
+            return "2.5";
         }
     }
 
