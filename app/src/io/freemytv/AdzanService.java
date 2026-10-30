@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.util.Log;
 
 public class AdzanService extends Service {
@@ -22,6 +23,11 @@ public class AdzanService extends Service {
     private static volatile AdzanService activeInstance;
 
     public static void start(Context context, String prayerName) {
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        if (pm != null && !pm.isInteractive()) {
+            Log.i(TAG, "AdzanService start skipped: screen is not interactive");
+            return;
+        }
         Intent intent = new Intent(context, AdzanService.class);
         intent.setAction(ACTION_START);
         intent.putExtra("prayer_name", prayerName);
@@ -61,6 +67,14 @@ public class AdzanService extends Service {
         activeInstance = this;
         String action = intent != null ? intent.getAction() : null;
         if (ACTION_STOP.equals(action)) {
+            stopAdzan();
+            return START_NOT_STICKY;
+        }
+
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        boolean isScreenOn = pm != null && pm.isInteractive();
+        if (!isScreenOn) {
+            Log.i(TAG, "AdzanService: Screen is not interactive. Stopping service immediately.");
             stopAdzan();
             return START_NOT_STICKY;
         }
@@ -146,4 +160,3 @@ public class AdzanService extends Service {
         return null;
     }
 }
-

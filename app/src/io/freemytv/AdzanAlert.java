@@ -13,6 +13,7 @@ import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
+import android.os.PowerManager;
 import android.util.Log;
 
 public final class AdzanAlert {
@@ -86,6 +87,17 @@ public final class AdzanAlert {
         if (!force && currentMinute == lastTriggeredMinute) return;
         lastTriggeredMinute = currentMinute;
 
+        // Schedule next prayer regardless of screen state, so future alerts are never lost
+        scheduleNext(context);
+
+        // Check if the TV screen is active / interactive
+        PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        boolean isScreenOn = powerManager != null && powerManager.isInteractive();
+        if (!isScreenOn) {
+            Log.i(TAG, "Screen is off / not interactive (TV sleep/standby). Suppressing Adzan alert, audio, and UI to prevent waking TV.");
+            return;
+        }
+
         activePrayerName = prayerName != null && !prayerName.isEmpty() ? prayerName : "Sholat";
         alertStartTime = System.currentTimeMillis();
         Log.i(TAG, "triggerAdzan: " + activePrayerName + " (force=" + force + ")");
@@ -93,7 +105,7 @@ public final class AdzanAlert {
         String city = Prefs.city().isEmpty() ? Config.CITY : Prefs.city();
         if (city.isEmpty()) city = "Batam";
 
-        // 1. Android TV Heads-up Notification
+        // 1. Android TV Notification (no full screen intent, default importance, won't wake screen)
         try {
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) {
@@ -101,11 +113,11 @@ public final class AdzanAlert {
                     NotificationChannel chan = new NotificationChannel(
                         CHANNEL_ID,
                         "Pengingat Adzan",
-                        NotificationManager.IMPORTANCE_HIGH
+                        NotificationManager.IMPORTANCE_DEFAULT
                     );
                     chan.setDescription("Pemberitahuan waktu adzan tiba untuk Kota Batam");
-                    chan.setBypassDnd(true);
-                    chan.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+                    chan.setBypassDnd(false);
+                    chan.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
                     nm.createNotificationChannel(chan);
                 }
 
@@ -123,13 +135,8 @@ public final class AdzanAlert {
                  .setContentText("Wilayah " + city + " dan sekitarnya")
                  .setContentIntent(pi)
                  .setAutoCancel(true)
-                 .setCategory(Notification.CATEGORY_ALARM)
-                 .setPriority(Notification.PRIORITY_MAX);
-
-                if (Build.VERSION.SDK_INT >= 21) {
-                    b.setVisibility(Notification.VISIBILITY_PUBLIC);
-                    b.setFullScreenIntent(pi, true);
-                }
+                 .setCategory(Notification.CATEGORY_EVENT)
+                 .setPriority(Notification.PRIORITY_DEFAULT);
 
                 nm.notify(777, b.build());
             }
@@ -140,7 +147,7 @@ public final class AdzanAlert {
         // 2. Start Foreground Service to display overlay over other apps and play audio
         AdzanService.start(context, activePrayerName);
 
-        // 4. Notify UI listener
+        // 3. Notify UI listener
         if (listener != null) {
             try {
                 listener.onAdzanStateChanged();
@@ -148,9 +155,6 @@ public final class AdzanAlert {
                 Log.e(TAG, "listener error", e);
             }
         }
-
-        // 5. Schedule next prayer
-        scheduleNext(context);
     }
 
     public static synchronized boolean isAudioPlaying() {
@@ -237,6 +241,11 @@ public final class AdzanAlert {
     public static synchronized void playAudio(Context context) {
         if (!Prefs.adzanSound()) {
             Log.i(TAG, "playAudio skipped: adzanSound is disabled in Prefs");
+            return;
+        }
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        if (pm != null && !pm.isInteractive()) {
+            Log.i(TAG, "playAudio skipped: Screen is not interactive");
             return;
         }
         try {

@@ -8,6 +8,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.util.Log;
 import android.util.TypedValue;
@@ -34,10 +35,22 @@ public final class AdzanOverlay {
     private AdzanOverlay() {}
 
     public static void show(Context context, String prayerName, String city) {
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        if (pm != null && !pm.isInteractive()) {
+            Log.i(TAG, "Adzan overlay skipped: Screen is not interactive");
+            return;
+        }
+
         Runnable showTask = new Runnable() {
             @Override
             public void run() {
                 try {
+                    PowerManager innerPm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                    if (innerPm != null && !innerPm.isInteractive()) {
+                        Log.i(TAG, "Adzan overlay skipped on main thread: Screen is not interactive");
+                        return;
+                    }
+
                     if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(context)) {
                         Log.w(TAG, "Cannot show overlay: SYSTEM_ALERT_WINDOW not granted");
                         return;
@@ -106,13 +119,7 @@ public final class AdzanOverlay {
 
                     int flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                        | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
-
-                    if (Build.VERSION.SDK_INT >= 27) {
-                        flags |= WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-                               | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON;
-                    }
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
 
                     WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                         WindowManager.LayoutParams.WRAP_CONTENT,
